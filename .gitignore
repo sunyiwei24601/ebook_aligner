@@ -5,3 +5,4 @@ books/*
 temp/*
 !temp/.gitkeep
 test.log
+*.epub
