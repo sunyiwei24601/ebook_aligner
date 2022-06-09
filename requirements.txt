@@ -1,0 +1,8 @@
+beautifulsoup4==4.11.1
+colorlog==6.6.0
+ebooklib==0.17.1
+langdetect==1.0.9
+pygtrans==1.4.0
+requests==2.27.1
+text2vec==1.1.6
+tqdm==4.26.0
