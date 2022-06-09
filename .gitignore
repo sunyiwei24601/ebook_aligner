@@ -1,5 +1,7 @@
 __pycache__/*
 .idea/*
-books/*.book
-temp/*.match
+books/*
+!books/.gitkeep
+temp/*
+!temp/.gitkeep
 test.log
