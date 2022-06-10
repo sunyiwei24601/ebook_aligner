@@ -4,12 +4,25 @@ from book import *
 import pickle
 from settings import *
 
+# 文本相似度对比模型，在Comparator第一次使用时初始化
 sim_model = None
 TEMP_SAVE_DIR = "temp"
 
+# 段落对齐相似度要求
+ALIGN_THRESHOLD = 0.7
+# 第一轮章节匹配度要求
+PAGE_MATCH_FIRST_THRESHOLD = 0.8
+# 第二轮章节匹配加入备选项要求
+PAGE_MATCH_SECOND_THRESHOLD = 0.7
+
 
 class Comparator:
+    """
+    文本相似度对比工具
+    """
+
     def __init__(self):
+        # 文本相似度对比缓存
         self.cache = {}
 
         # 初次使用时初始化
@@ -22,6 +35,12 @@ class Comparator:
             # model_name_or_path='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
 
     def compare_sentence(self, sentence1, sentence2):
+        """
+        计算两个文本的相似度，返回-1 - 1之间， 1为最高，会使用Cache来缓存结果
+        :param sentence1: 
+        :param sentence2: 
+        :return: 
+        """
         if not self.cache.get((sentence1, sentence2)):
             score = sim_model.get_score(sentence1, sentence2)
             # score = sim_model.similarity(sentence1, sentence2)
@@ -31,8 +50,11 @@ class Comparator:
 
 
 class Aligner:
-    def __init__(self, threshold=0.8):
-        self.threshold = threshold
+    """
+    段落对齐工具
+    """
+
+    def __init__(self):
         self.default_window_size = 2
         self.max_window_size = 10
         pass
@@ -40,15 +62,25 @@ class Aligner:
     @time_log("Align_Pages")
     def align(self, page_left, page_right):
         """
-        段落对齐的主要内容，
-        :param page_left: 
-        :param page_right: 
+        段落对齐的算法主体，page_left为英文段落，page_right为中文段落
+        left 与 right 是滑动窗口的两个指针
+        每次选择right指向的right_paragraph, 并维持一个以left指向的left_paragraph为中心构成的滑动窗口，与窗口内的文本进行相似度匹配
+        找到匹配度足够高的段落就放到它的后面，表明匹配成功
+
+        如果窗口内找不到匹配度足够高的段落，就把当前right_paragraph放入unassigned_paragraphs中，并扩大窗口大小，
+        直到下次匹配成功时，一起放到left_paragraph后面
+
+        如果持续找不到合适的匹配段落(window_size>20 超过10次)，则会启用兜底方案，遍历全文，为当前段落寻找匹配内容
+        :param page_left: 英文章节
+        :param page_right: 中文章节
         :return: 
         """
         logger.info("正在对齐章节 %s, %s", page_left.name, page_right.name)
         comparator = Comparator()
         left_paragraphs = page_left.paragraphs
         right_paragraphs = page_right.paragraphs
+
+        # 剔除无效段落
         left_paragraphs = [_ for _ in left_paragraphs if len(_.text) > 1]
         right_paragraphs = [_ for _ in right_paragraphs if len(_.text) > 1]
 
@@ -58,18 +90,21 @@ class Aligner:
 
         unassigned_paragraph = []
 
-        left = 0
-        right = 0
-        stuck_times = 0
+        left = 0  # 当前left_paragraph位置
+        right = 0  # 当前right_paragraph位置
+        stuck_times = 0  # 匹配卡住的次数
+
         with tqdm(total=len(right_paragraphs)) as bar:
             bar.set_description(f"正在对齐章节{page_left.name}的段落")
             while right < len(right_paragraphs) and left < len(left_paragraphs):
                 is_match = False
                 p_right = right_paragraphs[right]
+
+                # 滑动窗口大小 = 默认窗口大小 + 堆积未分配的unassigned_paragraph的长度*2
                 if stuck_times < 10:
                     window_size = min(self.default_window_size + 1 + len(unassigned_paragraph) * 2,
                                       self.max_window_size)
-                else:
+                else:  # 如果卡住超过 10 次，自动进入全文搜索阶段，window_size放到最大
                     window_size = int(len(left_paragraphs) / 2)
                 potential_p_list = left_paragraphs[
                                    left: min(left + window_size, len(left_paragraphs))] + left_paragraphs[max(0,
@@ -77,10 +112,13 @@ class Aligner:
 
                 for i, p_left in enumerate(potential_p_list):
                     score = comparator.compare_sentence(p_left.text, p_right.text)
-                    if score >= 0.7:
+                    # 相似度超过threshold标记为匹配成功
+                    if score >= ALIGN_THRESHOLD:
+                        # 清空unassigned_paragraph, 和当前匹配到的段落放在一起
                         while len(unassigned_paragraph) > 0:
                             _ = unassigned_paragraph.pop()
                             left_paragraphs[max(0, left_dict[p_left] - 1)].add_subject(_)
+                        # 把中文段落加到英文段落后面
                         p_left.add_subject(p_right, score)
                         right += 1
                         left = left_dict[p_left] + 1
@@ -91,13 +129,17 @@ class Aligner:
                 if not is_match:
                     unassigned_paragraph.append(p_right)
                     right += 1
-                    if window_size == self.max_window_size:
+                    if window_size >= self.max_window_size:
                         stuck_times += 1
-                    # 长时间卡住的情况，标记对齐出现了问题
+                    # 全文搜索之后仍然出现长时间卡住的情况，标记为 对齐出现了重大问题
                     if stuck_times > 20:
                         page_left.bad_aligned = True
+                        logger.warning(f"章节{page1.name} - {page2.name} 段落对齐可能出现问题， 选择跳过该章节")
+                        return
+
                 bar.update(1)
 
+        # 如果仍有剩余或未匹配成功的中文段落，全都加到最后
         if len(unassigned_paragraph) > 0:
             for _ in unassigned_paragraph:
                 left_paragraphs[min(left, len(left_paragraphs) - 1)].add_subject(_)
@@ -107,8 +149,6 @@ class Aligner:
 
         page_left.is_aligned = True
         page_left.save()
-        # if page1.bad_aligned:
-        #     logger.warning(f"章节{page1.name} - {page2.name} 段落对齐可能出现问题")
 
 
 class PageMatcher:
@@ -129,7 +169,7 @@ class PageMatcher:
         章节匹配算法的主体，left为英文版本，right为中文版，三轮匹配
         第一轮，根据left文本长度，选出合适的right备选章节，相似度>0.8直接返回
         第二轮，扩大备选章节数量，相似度大于0.8直接返回
-        第三轮，如果以上两轮找不到的话，选择大于0.75且分数最高的章节作为匹配结果
+        第三轮，如果以上两轮找不到的话，选择大于0.7且分数最高的章节作为匹配结果
         :return:
         """
         comparator = Comparator()
@@ -148,7 +188,7 @@ class PageMatcher:
             for page_right in potential_pages:
                 abstract_right = page_right.get_abstract()
                 score = comparator.compare_sentence(abstract_left, abstract_right)
-                if score >= 0.8:
+                if score >= PAGE_MATCH_FIRST_THRESHOLD:
                     self.matched_pages.append((page_left, page_right, score))
                     self.pages_right.remove(page_right)
                     self.unmatched_pages.remove(page_left)
@@ -162,14 +202,14 @@ class PageMatcher:
                     abstract_right = page_right.get_abstract(n=15)
                     score = comparator.compare_sentence(abstract_left, abstract_right)
                     # 相似度大于0.8直接返回
-                    if score >= 0.8:
+                    if score >= PAGE_MATCH_FIRST_THRESHOLD:
                         self.matched_pages.append((page_left, page_right, score))
                         self.pages_right.remove(page_right)
                         self.unmatched_pages.remove(page_left)
                         is_match = True
                         break
                     # 相似度 > 0.7 后放入备选列表
-                    elif score >= 0.7:
+                    elif score >= PAGE_MATCH_SECOND_THRESHOLD:
                         matched_pages_candidates.append((page_left, page_right, score))
 
         # 第三轮，把备选列表按照分数进行排序，选出分数较高的部分
@@ -208,6 +248,10 @@ class PageMatcher:
             pickle.dump(self, f)
 
     def get_books(self):
+        """
+        获取matcher当前正在匹配的两本书
+        :return: book_en, book_zn
+        """
         if len(self.matched_pages) > 0:
             return self.matched_pages[0][0].book, self.matched_pages[0][1].book
         else:
@@ -221,7 +265,9 @@ class PageMatcher:
         book_left, book_right = self.get_books()
         left_page_num, right_page_num = book_left.get_main_page_num(), book_right.get_main_page_num()
         gap = abs(left_page_num - right_page_num)
-        if gap < left_page_num / 2 and gap < right_page_num/2:
+
+        # 章节数目差异超过某本书的一半，说明差异过大
+        if gap < left_page_num / 2 and gap < right_page_num / 2:
             logger.info(f"{book_left.get_name()}主要章节数量:{left_page_num}, "
                         f"{book_right.get_name()[:20]}主要章节数量:{right_page_num},"
                         f" 数量大致匹配")
@@ -240,7 +286,7 @@ class PageMatcher:
         读取或新建一个章节匹配器
         :param book1: 英文版
         :param book2: 中文版
-        :param load: 是否加载现有内容
+        :param load: 是否加载已经保存的内容
         :return: 
         """
         filename = PageMatcher.get_filename(book1, book2)
@@ -249,8 +295,6 @@ class PageMatcher:
                 return pickle.load(f)
         else:
             return PageMatcher(book1, book2)
-
-
 
 
 if __name__ == '__main__':

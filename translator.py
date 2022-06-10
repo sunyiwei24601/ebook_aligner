@@ -11,11 +11,14 @@ LOCATION = "eastus"
 
 
 class TranslatorType(Enum):
-    PYGTRANS = 1
-    AZURE = 2
+    PYGTRANS = 1  # PYGTRANS的翻译API，免费，不太稳定，勉强可用
+    AZURE = 2  # AZURE的翻译API，需要自己提供secret key
 
 
 class Translator:
+    """
+    翻译器主体，调用api翻译文本，考虑未来支持更多api
+    """
     def __init__(self, t=TranslatorType.PYGTRANS):
         path = '/translate'
         self.constructed_url = ENDPOINT + path
@@ -25,7 +28,7 @@ class Translator:
 
     def translate_by_azure_api(self, text, from_l='en', to='zh-Hans'):
         """
-        调用API接口，返回中文翻译
+        调用AZURE API接口，返回中文翻译
         :param text: 文本内容 
         :param from_l: 源文本语言
         :param to: 目标翻译语言

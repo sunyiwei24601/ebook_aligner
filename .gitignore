@@ -6,5 +6,7 @@ temp/*
 !temp/.gitkeep
 epubs/*
 !epubs/.gitkeep
+!epubs/book1.epub
+!epubs/book2.epub
 test.log
 *.epub

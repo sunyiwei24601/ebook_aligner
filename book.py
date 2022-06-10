@@ -15,6 +15,10 @@ translator = Translator()
 
 
 class Book:
+    """
+    电子书的主体，读取epub文件并解析为不同的pages(章节)
+    """
+
     def __init__(self, filename, save=True, debug=False):
         self.book_file = epub.read_epub(os.path.join(EPUB_DIR, filename))
         self.filename = filename
@@ -39,12 +43,21 @@ class Book:
         self.save()
 
     def save(self):
+        """
+        保存为.book文件
+        :return:
+        """
         if self.if_save:
             save_filename = self.filename.split('.epub')[0] + '.book'
             with open(os.path.join(BOOK_SAVE_DIR, save_filename), 'wb') as f:
                 pickle.dump(self, f)
 
     def get_length(self, translated=False):
+        """
+        获取全书长度
+        :param translated: True则获取中文翻译版本长度
+        :return:
+        """
         if translated:
             self.length = sum([_.get_length(translated=True) for _ in self.pages])
         else:
@@ -52,6 +65,10 @@ class Book:
         return self.length
 
     def get_translate(self):
+        """
+        对每个page进行翻译，途中会保存
+        :return:
+        """
         for page in self.pages:
             page.translate()
             self.save()
@@ -60,8 +77,7 @@ class Book:
     def save_combined(self):
         """
         将两本书合并之后，保存为新的epub文件
-        :param filename: 
-        :return: 
+        :return:
         """
         for page in self.pages:
             page.set_page_combined()
@@ -80,11 +96,10 @@ class Book:
     def open_book(filename, load=True, debug=False):
         """
         打开一本书，如果已经存在则读取文件，不存在则重新载入
-        :param translate_type: 
-        :param translate: 
-        :param load: 
-        :param filename: 
-        :return: 
+        :param filename: 电子书文件名，默认放在BOOK_SAVE_DIR文件夹下
+        :param debug: 测试用选项，打开后只会选取某几个特定page
+        :param load: 是否加载本地存档文件
+        :return:
         """
         save_filename = filename.split('.epub')[0] + '.book'
         if save_filename in os.listdir(BOOK_SAVE_DIR) and load:
@@ -98,7 +113,7 @@ class Book:
     def reset(self):
         """
         重置已经对齐的内容，重新进行对齐
-        :return: 
+        :return:
         """
         self.if_save = True
         for page in self.pages:
@@ -122,20 +137,27 @@ class Book:
 
 
 class Page:
+    """
+    用来处理章节内容的类， 由不同的段落paragraph构成
+    """
     def __init__(self, item, book):
         self.book = book
         self.origin = item
         self.name = item.get_name()
         self.html = item.get_content().decode('utf-8')
+
+        # 分离html文件的开头，结尾与主体内容
         self.body_start = self.body_end = 0
         self.head = self.extract_head()
         self.tail = self.extract_tail()
         self.body = self.html[self.body_start:self.body_end]
+
+        # 解析章节中的各个段落
         self.paragraphs = []
         self.extract_paragraphs()
         self.length = self.get_length()
 
-        # 保存使用
+        # 用于保存当前的状态
         self.is_translated = False
         self.is_aligned = False
         self.bad_aligned = False
@@ -190,6 +212,10 @@ class Page:
             self.paragraphs.append(para)
 
     def print_page_combined(self):
+        """
+        预览章节对齐的效果
+        :return:
+        """
         logger.info("%s 章节对齐完成，预览效果如下 :", self.name)
         for p in self.paragraphs:
             print(p.text[:100])
@@ -200,7 +226,7 @@ class Page:
     def set_page_combined(self):
         """
         合并已经对齐的内容，替换中文版中注释的超链接地址为当前文件的url
-        :return: 
+        :return:
         """
         content = self.head
         page_href = self.get_filename()
@@ -217,10 +243,10 @@ class Page:
 
     def get_abstract(self, n=10, translated=False):
         """
-        获取本章前n段的内容，用于比较相似度
+        获取本章前n段的内容作为摘要，用于比较相似度
         :param translated: 是否获取中文版本
-        :param n: 
-        :return: 
+        :param n: 获取前n段内容作为摘要
+        :return:
         """
         abstract = ""
         i = 0
@@ -236,6 +262,11 @@ class Page:
         return abstract
 
     def get_length(self, translated=False):
+        """
+        获取全文长度
+        :param translated: True则表示获取翻译的中文长度
+        :return:
+        """
         if translated:
             self.length = sum([len(p.translation) for p in self.paragraphs])
         else:
@@ -244,6 +275,11 @@ class Page:
 
     @time_log('Page_Translate')
     def translate(self, para_nums=15):
+        """
+        翻译章节的内容，只需翻译前para_nums段即可
+        :param para_nums:
+        :return:
+        """
         # logger.info("正在翻译章节：%s", self.name)
         if self.is_translated:
             return
@@ -261,6 +297,7 @@ class Page:
         self.book.save()
 
     def reset(self):
+        """重置后方便重新对齐"""
         self.is_aligned = False
         for p in self.paragraphs:
             p.reset()
@@ -268,7 +305,7 @@ class Page:
     def get_filename(self):
         """
         提取page的超链接地址
-        :return: 
+        :return:
         """
         parts = self.origin.file_name.split('/')
         if len(parts) > 0 and "html" in parts[-1]:
@@ -292,7 +329,7 @@ class Paragraph:
 
         Args:
             paragraph (_type_): _description_
-            :param score: 
+            :param score:
         """
         self.subjects.append(paragraph)
         self.align_score = score
@@ -324,6 +361,10 @@ class Paragraph:
 
 
 class Sentence:
+    """
+    Deprecated, 本来可以用作逐句的翻译对齐
+    """
+
     def __init__(self, text):
         self.text = text
         self.translation = ''
