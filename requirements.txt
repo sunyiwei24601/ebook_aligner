@@ -1,3 +1,10 @@
+numpy
+pandas
+pythran
+pybind11
+scipy
+setuptools_rust
+torch
 beautifulsoup4~=4.10.0
 colorlog==6.6.0
 ebooklib==0.17.1

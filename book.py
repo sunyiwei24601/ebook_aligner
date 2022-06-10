@@ -90,7 +90,7 @@ class Book:
         except Exception as e:
             logger.warning("未找到本书的metadata, %s", e)
             title = self.filename
-        return title.replace(":", "")
+        return title.replace(":", "")[:20]
 
     @staticmethod
     def open_book(filename, load=True, debug=False):
