@@ -4,5 +4,7 @@ books/*
 !books/.gitkeep
 temp/*
 !temp/.gitkeep
+epubs/*
+!epubs/.gitkeep
 test.log
 *.epub

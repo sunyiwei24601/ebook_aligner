@@ -6,6 +6,7 @@ from tqdm import tqdm
 from functools import wraps
 import collections
 
+EPUB_DIR = 'epubs'
 
 class Color(Enum):
     BLACK = 30
@@ -42,7 +43,7 @@ file_handler = logging.FileHandler(filename='test.log', mode='a', encoding='utf8
 # 日志级别，logger 和 handler以最高级别为准，不同handler之间可以不一样，不相互影响
 logger.setLevel(logging.INFO)
 console_handler.setLevel(logging.INFO)
-file_handler.setLevel(logging.INFO)
+file_handler.setLevel(logging.DEBUG)
 
 # 日志输出格式
 file_formatter = logging.Formatter(

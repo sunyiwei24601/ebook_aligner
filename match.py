@@ -1,17 +1,22 @@
 # -*- coding: utf-8 -*-
 
-from text2vec import Similarity
 from book import *
 import pickle
 from settings import *
 
-sim_model = Similarity()
+sim_model = None
 TEMP_SAVE_DIR = "temp"
 
 
 class Comparator:
     def __init__(self):
         self.cache = {}
+
+        # 初次使用时初始化
+        global sim_model
+        if sim_model is None:
+            from text2vec import Similarity
+            sim_model = Similarity()
 
     def compare_sentence(self, sentence1, sentence2):
         if not self.cache.get((sentence1, sentence2)):
@@ -103,8 +108,8 @@ class Aligner:
 
 class PageMatcher:
     def __init__(self, book_left, book_right):
-        self.pages_left = book_left.pages[:]
-        self.pages_right = book_right.pages[:]
+        self.pages_left = list(sorted(book_left.pages[:], key=lambda x: x.get_length(), reverse=True))
+        self.pages_right = list(sorted(book_right.pages[:], key=lambda x: x.get_length(), reverse=True))
         self.book_length_left = book_left.get_length()
         self.book_length_right = book_right.get_length()
         self.filename = PageMatcher.get_filename(book_left, book_right)

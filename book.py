@@ -16,10 +16,9 @@ translator = Translator()
 
 class Book:
     def __init__(self, filename, save=True, debug=False):
-        self.book_file = epub.read_epub(filename)
+        self.book_file = epub.read_epub(os.path.join(EPUB_DIR, filename))
         self.filename = filename
         self.if_save = save
-        items = self.book_file.get_items()
         page_items = list(self.book_file.get_items_of_type(ebooklib.ITEM_DOCUMENT))
         self.pages = []
         bar = tqdm(page_items)
