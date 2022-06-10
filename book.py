@@ -349,7 +349,7 @@ class Paragraph:
         soup = BeautifulSoup(self.content, 'html.parser')
         return soup.text.strip()
 
-    @time_log("Paragraph_Translate")
+    @time_log("Paragraph_Translate", preview=False)
     def get_translate(self):
         if len(self.text) < 2 or self.is_translated:
             return

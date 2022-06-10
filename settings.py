@@ -74,15 +74,16 @@ TIME_RECORDER = collections.defaultdict(list)
 
 def print_time_log():
     for section in TIME_RECORDER:
-        logger.info("{} 消耗时间: {}".format(section, sum(TIME_RECORDER[section])))
+        logger.info("最终 {} 消耗时间: {}".format(section, sum(TIME_RECORDER[section])))
         logger.debug(str(TIME_RECORDER[section]))
 
 
-def time_log(section):
+def time_log(section, preview=True):
     """
     记录每个阶段的运行时间
-    :param section: 
-    :return: 
+    :param preview:
+    :param section:
+    :return:
     """
     def decorate(func):
         @wraps(func)
@@ -91,7 +92,8 @@ def time_log(section):
             result = func(*args, **kwargs)
             end = time.time()
             TIME_RECORDER[section].append(end - start)
-
+            if preview:
+                logger.info("{} 消耗时间: {}".format(section, sum(TIME_RECORDER[section])))
         return wrapper
 
     return decorate

@@ -1,7 +1,5 @@
 numpy
 pandas
-pythran
-pybind11
 scipy
 setuptools_rust
 torch
