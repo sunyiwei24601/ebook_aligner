@@ -41,7 +41,7 @@ console_handler = logging.StreamHandler()
 file_handler = logging.FileHandler(filename='test.log', mode='a', encoding='utf8')
 
 # 日志级别，logger 和 handler以最高级别为准，不同handler之间可以不一样，不相互影响
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 console_handler.setLevel(logging.INFO)
 file_handler.setLevel(logging.DEBUG)
 
@@ -79,6 +79,11 @@ def print_time_log():
 
 
 def time_log(section):
+    """
+    记录每个阶段的运行时间
+    :param section: 
+    :return: 
+    """
     def decorate(func):
         @wraps(func)
         def wrapper(*args, **kwargs):

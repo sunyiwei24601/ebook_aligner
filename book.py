@@ -105,6 +105,21 @@ class Book:
             page.reset()
             page.book = self
 
+    def get_main_page_num(self):
+        """
+        获取占本书前95%长度的章节数量，视为主要章节数量，用于比较不同电子书之间的章节数量差异
+        :return: 
+        """
+        page_length_list = sorted([_.get_length() for _ in self.pages], reverse=True)
+
+        sum_length = sum(page_length_list)
+        target = 0
+        for i, page_length in enumerate(page_length_list):
+            target += page_length
+            if target > 0.95 * sum_length:
+                break
+        return i + 1
+
 
 class Page:
     def __init__(self, item, book):
@@ -119,9 +134,13 @@ class Page:
         self.paragraphs = []
         self.extract_paragraphs()
         self.length = self.get_length()
+
+        # 保存使用
         self.is_translated = False
         self.is_aligned = False
         self.bad_aligned = False
+
+        self.abstract = ""
 
     def extract_head(self):
         """找到第一个H1或者p的位置，将之前的都默认为header
@@ -212,7 +231,8 @@ class Page:
                 i += 1
             if i >= n:
                 break
-
+        if translated:
+            self.abstract = abstract
         return abstract
 
     def get_length(self, translated=False):
@@ -300,7 +320,7 @@ class Paragraph:
         self.is_translated = True
 
     def reset(self):
-        self.subjects=[]
+        self.subjects = []
 
 
 class Sentence:

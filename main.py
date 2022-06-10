@@ -2,13 +2,15 @@ from settings import *
 from book import *
 from match import *
 
+
 if __name__ == '__main__':
     book_en = Book.open_book('book1.epub', load=True, debug=False)
     book_zn = Book.open_book('book2.epub', load=True)
 
     book_en.get_translate()
 
-    matcher = PageMatcher.open_matcher(book_en, book_zn, load=True)
+    matcher = PageMatcher.open_matcher(book_en, book_zn, load=False)
+    matcher.check_page_num()
     book_en, book_zn = matcher.get_books()
     matcher.match()
     aligner = Aligner()

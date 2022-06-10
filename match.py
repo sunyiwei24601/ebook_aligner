@@ -15,12 +15,17 @@ class Comparator:
         # 初次使用时初始化
         global sim_model
         if sim_model is None:
-            from text2vec import Similarity
-            sim_model = Similarity()
+            from text2vec import Similarity, EmbeddingType, SimilarityType
+            sim_model = Similarity(model_name_or_path='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+            # from similarities.fastsim import HnswlibSimilarity 
+            # sim_model = HnswlibSimilarity(
+            # model_name_or_path='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
 
     def compare_sentence(self, sentence1, sentence2):
         if not self.cache.get((sentence1, sentence2)):
             score = sim_model.get_score(sentence1, sentence2)
+            # score = sim_model.similarity(sentence1, sentence2)
+
             self.cache[(sentence1, sentence2)] = score
         return self.cache[(sentence1, sentence2)]
 
@@ -208,6 +213,23 @@ class PageMatcher:
         else:
             return self.pages_left[0].book, self.pages_right[0].book
 
+    def check_page_num(self):
+        """
+        匹配前检查一下两本书的主要章节数，如果相差过大，注意提醒用户注意电子书版本与质量
+        :return: 
+        """
+        book_left, book_right = self.get_books()
+        left_page_num, right_page_num = book_left.get_main_page_num(), book_right.get_main_page_num()
+        gap = abs(left_page_num - right_page_num)
+        if gap < left_page_num / 2 and gap < right_page_num/2:
+            logger.info(f"{book_left.get_name()}主要章节数量:{left_page_num}, "
+                        f"{book_right.get_name()[:20]}主要章节数量:{right_page_num},"
+                        f" 数量大致匹配")
+        else:
+            logger.warning(f"{book_left.get_name()}主要章节数量:{left_page_num}, "
+                           f"{book_right.get_name()[:20]}主要章节数量:{right_page_num},"
+                           f"请检查电子书资源或者版本是否正确。")
+
     @staticmethod
     def get_filename(book_left, book_right):
         return book_left.get_name() + '_' + book_right.get_name() + '.match'
@@ -227,6 +249,8 @@ class PageMatcher:
                 return pickle.load(f)
         else:
             return PageMatcher(book1, book2)
+
+
 
 
 if __name__ == '__main__':
