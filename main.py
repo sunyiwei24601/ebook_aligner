@@ -35,7 +35,7 @@ if __name__ == '__main__':
     aligner = Aligner()
 
     for page1, page2, _ in matcher.matched_pages[:]:
-        page1.reset()
+        # page1.reset()
         if not page1.is_aligned:
             aligner.align(page1, page2)
             if preview:

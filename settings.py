@@ -93,7 +93,7 @@ def time_log(section, preview=True):
             end = time.time()
             TIME_RECORDER[section].append(end - start)
             if preview:
-                logger.info("{} 消耗时间: {}".format(section, sum(TIME_RECORDER[section])))
+                logger.debug("{} 消耗时间: {}".format(section, sum(TIME_RECORDER[section])))
         return wrapper
 
     return decorate
