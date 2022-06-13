@@ -116,7 +116,7 @@ class Aligner:
                     if score >= ALIGN_THRESHOLD:
                         # 清空unassigned_paragraph, 和当前匹配到的段落放在一起
                         while len(unassigned_paragraph) > 0:
-                            _ = unassigned_paragraph.pop()
+                            _ = unassigned_paragraph.pop(0)
                             left_paragraphs[max(0, left_dict[p_left] - 1)].add_subject(_)
                         # 把中文段落加到英文段落后面
                         p_left.add_subject(p_right, score)
