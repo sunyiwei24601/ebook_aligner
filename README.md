@@ -73,10 +73,17 @@ python3.8 -m pip install -r requirements.txt
 ```
 在Google Cloud 上配置过，整个环境的安装流程大概需要五分钟左右
 
+### Docker 运行
+
+```bash
+docker image pull troyes233/ebook_aligner
+docker container run -it troyes233/ebook_alginer 
+```
+
 ### 详细参数
 
 ```bash
-python3.8 main.py --preview --load book1.epub book2.epub
+python3.8 main.py --preview true --load true book1.epub book2.epub
 ```
 
 * `--preview` 是否打开预览功能，会在每个章节对齐后展示对齐内容, 默认开启
@@ -156,4 +163,4 @@ PS:
 - [ ] 理论上算法支持多语言版本（模型自带的50种语言都可）
 - [ ] 更快效率的文本相似度/ 文本向量化 模型，有比较懂的大佬请联系我
 - [ ] 支持更多的翻译API
-- [ ] 未来考虑搞docker镜像
+- [x] 未来考虑搞docker镜像
